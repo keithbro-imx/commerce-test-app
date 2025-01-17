@@ -12,7 +12,12 @@ import { useSearchParams } from "next/navigation";
 export type CommerceContext = {
   passportClient: passport.Passport;
   widgetsFactory: checkout.IWidgetsFactory | undefined;
-  commerceWidget: checkout.Widget<typeof checkout.WidgetType.IMMUTABLE_COMMERCE> | undefined;
+  commerceWidget1:
+    | checkout.Widget<typeof checkout.WidgetType.IMMUTABLE_COMMERCE>
+    | undefined;
+  commerceWidget2:
+    | checkout.Widget<typeof checkout.WidgetType.IMMUTABLE_COMMERCE>
+    | undefined;
 };
 
 const commerceContext = createContext<CommerceContext | null>(null);
@@ -31,7 +36,10 @@ function CommerceProvider({ children }: PropsWithChildren) {
   const [widgetsFactory, setWidgetsFactory] =
     useState<checkout.IWidgetsFactory>();
 
-  const [commerceWidget, setCommerceWidget] = useState<checkout.Widget<typeof checkout.WidgetType.IMMUTABLE_COMMERCE>>();
+  const [commerceWidget1, setCommerceWidget1] =
+    useState<checkout.Widget<typeof checkout.WidgetType.IMMUTABLE_COMMERCE>>();
+  const [commerceWidget2, setCommerceWidget2] =
+    useState<checkout.Widget<typeof checkout.WidgetType.IMMUTABLE_COMMERCE>>();
 
   useEffect(() => {
     (async () => {
@@ -46,13 +54,30 @@ function CommerceProvider({ children }: PropsWithChildren) {
         },
       });
       setWidgetsFactory(widgetsFactory);
-      const commerceWidget = widgetsFactory.create(checkout.WidgetType.IMMUTABLE_COMMERCE, { });
-      setCommerceWidget(commerceWidget);
+
+      const commerceWidget1 = widgetsFactory.create(
+        checkout.WidgetType.IMMUTABLE_COMMERCE,
+        {}
+      );
+      setCommerceWidget1(commerceWidget1);
+
+      const commerceWidget2 = widgetsFactory.create(
+        checkout.WidgetType.IMMUTABLE_COMMERCE,
+        {}
+      );
+      setCommerceWidget2(commerceWidget2);
     })();
   }, []);
 
   return (
-    <commerceContext.Provider value={{ passportClient, widgetsFactory, commerceWidget }}>
+    <commerceContext.Provider
+      value={{
+        passportClient,
+        widgetsFactory,
+        commerceWidget1,
+        commerceWidget2,
+      }}
+    >
       {children}
     </commerceContext.Provider>
   );
@@ -67,30 +92,39 @@ const useCommerce = () => {
 };
 
 export const CommerceWidget = ({
+  id,
+  widget,
   params,
 }: {
+  id: string;
+  widget:
+    | checkout.Widget<typeof checkout.WidgetType.IMMUTABLE_COMMERCE>
+    | undefined;
   params: checkout.CommerceWidgetParams;
 }) => {
-  const { commerceWidget } = useCommerce();
-
   useEffect(() => {
-    console.log(params.flow)
-    console.log({ commerceWidget, params });
-    if (!commerceWidget) return;
-    commerceWidget.mount("no-thanks", params);
+    if (!widget) return;
+    widget.mount(id, params);
+    widget.addListener(checkout.CommerceEventType.CLOSE, () => {
+      console.log({id, x: 'close'});
+    });
     return () => {
       console.log("unmounting...");
-      commerceWidget.unmount();
+      widget.unmount();
     };
-  }, [params, commerceWidget]);
+  }, [params, widget]);
 
-  return <div id="no-thanks" />;
+  return (
+    <>
+      <div id={id} />
+    </>
+  );
 };
 
 function Thang() {
   const { passportClient } = useCommerce();
   const queryParams = useSearchParams();
-  const [showWidget, setShowWidget] = useState(false);
+  const { commerceWidget1, commerceWidget2 } = useCommerce();
 
   useEffect(() => {
     if (!queryParams.has("code")) return;
@@ -99,16 +133,22 @@ function Thang() {
 
   return (
     <>
-      <button
-        onClick={() => {
-          setShowWidget(true);
-        }}
-      >
-        Show
-      </button>
-      {showWidget ? (
-        <CommerceWidget params={{ flow: checkout.CommerceFlowType.SWAP, amount: "1" }} />
-      ) : null}
+    <p>1</p>
+      {commerceWidget1 && (
+        <CommerceWidget
+          id="no-thanks-1"
+          widget={commerceWidget1}
+          params={{ flow: checkout.CommerceFlowType.SWAP, amount: "1" }}
+        />
+      )}
+    <p>2</p>
+      {commerceWidget2 && (
+        <CommerceWidget
+          id="no-thanks-2"
+          widget={commerceWidget2}
+          params={{ flow: checkout.CommerceFlowType.SWAP, amount: "1" }}
+        />
+      )}
     </>
   );
 }
